@@ -140,19 +140,19 @@ by all the other particles."
     (let [pa (nth @particles a)
           pb (nth @particles b)]
       (when (and (not= a b) (collided? pa pb))
-        (let [dir (direction-from (:pos pb) (:pos pa))
+        (let [dir (direction-from (:pos pa) (:pos pb))
               dist (distance (:pos pa) (:pos pb))
               bounce (direction dir (- particle-diameter dist))]
           (swap! particles
                  assoc
                  a (assoc pa
-                     :pos (map + (:pos pa) bounce)
-                     :vel (map +
+                     :pos (map - (:pos pa) bounce)
+                     :vel (map -
                                (:vel pa)
                                (direction dir (magnitude (:vel pa)))))
                  b (assoc pb
-                     :pos (map - (:pos pb) bounce)
-                     :vel (map -
+                     :pos (map + (:pos pb) bounce)
+                     :vel (map +
                                (:vel pb)
                                (direction dir (magnitude (:vel pb)))))))))))
 

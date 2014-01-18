@@ -1,36 +1,47 @@
 (ns physim.core
   (:require [THREE :as THREE]))
 
-(def particle-count 30)
+(def particle-count 10)
 (def gravity-multiplier 100)
-(def velocity-limit 10)
+(def speed-limit 5)
+(def initial-speed 0)
+
+(def scene-width window/innerWidth)
+(def scene-height window/innerHeight)
 
 (def particles (atom []))
 (def particle-meshes (atom []))
+(def collided-particles (atom {}))
 
 (defn rand-x
   []
-  (- (rand-int window/innerWidth)
-     (/ window/innerWidth 2)))
+  (- (rand-int scene-width)
+     (/ scene-width 2)))
 
 (defn rand-y
   []
-  (- (rand-int window/innerHeight)
-     (/ window/innerHeight 2)))
+  (- (rand-int scene-height)
+     (/ scene-height 2)))
 
 (defn generate-particles
   [n]
   (for [i (range n)]
     { :pos [(rand-x) (rand-y) (rand-y)]
-      :vel [(/ (* 0 (rand-x)) window/innerWidth)
-            (/ (* 0 (rand-y)) window/innerWidth)
-            (/ (* 0 (rand-y)) window/innerWidth)] }))
+      :vel [(/ (* initial-speed (rand-x)) scene-width)
+            (/ (* initial-speed (rand-y)) scene-width)
+            (/ (* initial-speed (rand-y)) scene-width)] }))
 
 (defn set-position!
   [mesh [x y z]]
   (set! (.-x (.-position mesh)) x)
   (set! (.-y (.-position mesh)) y)
   (set! (.-z (.-position mesh)) z))
+
+(defn rotate-angles!
+  [mesh [x y z]]
+  (set! (.-x (.-rotation mesh)) (+ (.-x (.-rotation mesh)) x))
+  (set! (.-y (.-rotation mesh)) (+ (.-y (.-rotation mesh)) y))
+  (set! (.-z (.-rotation mesh)) (+ (.-z (.-rotation mesh)) z)))
 
 (defn mesh-from-particle
   [p]
@@ -48,14 +59,14 @@
 (defn make-renderer!
   [meshes]
   (let [camera (THREE.PerspectiveCamera.
-                50 (/ window/innerWidth
-                      window/innerHeight) 1 10000)
+                50 (/ scene-width
+                      scene-height) 1 10000)
         scene (THREE.Scene.)
         renderer (THREE.CanvasRenderer.)]
     (set! (.-z (.-position camera)) 1000)
     (doseq [m meshes]
       (.add scene m))
-    (.setSize renderer window/innerWidth window/innerHeight)
+    (.setSize renderer scene-width scene-height)
     (.appendChild (.-body js/document) (.-domElement renderer))
 
     (fn []
@@ -83,8 +94,8 @@
   (let [a (calc-accel p all)
         v (map + v a)
         magv (magnitude v)
-        v (if (> magv velocity-limit)
-            (map #(* (/ % magv) vel-limit) v)
+        v (if (> magv speed-limit)
+            (map #(* (/ % magv) speed-limit) v)
             v)
         p (map + p v)]
     [p v a]))
@@ -100,13 +111,14 @@
             b (range n)]
       (let [pa (nth @particles a)
             pb (nth @particles b)
-            v (map + (:vel pa) (:vel pb))
-            pa {:pos (:pos pa) :vel v}
-            pb {:pos (:pos pb) :vel v}]
+            abdir (map - (:pos pa) (:pos pb))
+            dist (magnitude abdir)
+            abdir (map #(/ % dist) abdir)
+            bounce (map #(* % (- 20 dist)) abdir)]
         (when (and (not= a b) (collided? (:pos pa) (:pos pb)))
           (do
-            (reset! particles (assoc @particles a pa))
-            (reset! particles (assoc @particles b pb))))))))
+            (reset! particles (assoc @particles a (assoc pa :pos (map + (:pos pa) bounce) :vel (map + (:vel pa) (map #(* % (magnitude (:vel pa))) abdir)))))
+            (reset! particles (assoc @particles b (assoc pb :pos (map - (:pos pb) bounce) :vel (map - (:vel pb) (map #(* % (magnitude (:vel pb))) abdir)))))))))))
 
 (defn motion-tick!
   []
@@ -121,11 +133,13 @@
 (defn render
   []
   (motion-tick!)
-  ;(handle-collisions!)
+  (handle-collisions!)
 
   (doseq [i (range (count @particles))]
     (let [p (nth @particles i)
           m (nth @particle-meshes i)]
+      ;; static rotation for blinginess
+      (rotate-angles! m [0 2 0])
       (set-position! m (:pos p))))
 
   (render-scene))

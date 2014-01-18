@@ -15,6 +15,8 @@
 (def particle-meshes (atom []))
 (def collided-particles (atom {}))
 
+(def nullv [0 0 0])
+
 (defn rand-x
   []
   (- (rand-int scene-width)
@@ -79,34 +81,56 @@
   [v]
   (Math/sqrt (apply + (map #(* % %) v))))
 
+(defn direction
+  "Given a vector, returns a unit vector in the same direction, optionally
+scaled."
+  ([v] (direction v 1))
+  ([v m]
+     (let [mag (magnitude v)]
+       (map #(* (/ % mag) m) v))))
+
+(defn direction-from
+  "Given two vectors, returns a unit vector representing the direction from the
+first to the second, optionally scaled."
+  ([a b] (direction-from a b 1))
+  ([a b m]
+     (direction (map - b a) m)))
+
+(defn distance
+  [a b]
+  (magnitude (map - a b)))
+
 (defn calc-accel
-  [p all]
-  (reduce (fn [a n]
-            (let [dir (map - (:pos n) p)
-                  mag (magnitude dir)
-                  dir (map #(/ % mag) dir)]
-              (map + a
-                   (if (> mag 0)
-                     (map #(* % (/ gravity-multiplier
-                                   (* mag mag))) dir)
-                     [0 0 0]))))
-          [0 0 0]
-          all))
+  "Calculates the sum vector of the gravitational force exerted on the partical
+by all the other particles."
+  [p all-particles]
+  (reduce
+   (fn [a n]
+     (let [dir (direction-from p (:pos n))
+           dist (distance p (:pos n))]
+       (map + a
+            (if (> dist 0)
+              (direction dir (/ gravity-multiplier
+                                (* dist dist)))
+              nullv))))
+   nullv
+   all-particles))
 
 (defn move
+  "Moves the particle according to the universe's equations of motion."
   [p v all]
   (let [a (calc-accel p all)
         v (map + v a)
-        magv (magnitude v)
-        v (if (> magv speed-limit)
-            (map #(* (/ % magv) speed-limit) v)
+        speed (magnitude v)
+        v (if (> speed speed-limit)
+            (direction v speed-limit)
             v)
         p (map + p v)]
     [p v a]))
 
 (defn collided?
   [a b]
-  (< (magnitude (map - a b)) particle-diameter))
+  (< (distance (:pos a) (:pos b)) particle-diameter))
 
 (defn handle-collisions!
   []
@@ -114,15 +138,19 @@
     (doseq [a (range n)
             b (range n)]
       (let [pa (nth @particles a)
-            pb (nth @particles b)
-            abdir (map - (:pos pa) (:pos pb))
-            dist (magnitude abdir)
-            abdir (map #(/ % dist) abdir)
-            bounce (map #(* % (- particle-diameter dist)) abdir)]
-        (when (and (not= a b) (collided? (:pos pa) (:pos pb)))
-          (do
-            (reset! particles (assoc @particles a (assoc pa :pos (map + (:pos pa) bounce) :vel (map + (:vel pa) (map #(* % (magnitude (:vel pa))) abdir)))))
-            (reset! particles (assoc @particles b (assoc pb :pos (map - (:pos pb) bounce) :vel (map - (:vel pb) (map #(* % (magnitude (:vel pb))) abdir)))))))))))
+            pb (nth @particles b)]
+        (when (and (not= a b) (collided? pa pb))
+          (let [dir (direction-from (:pos pb) (:pos pa))
+                dist (distance (:pos pa) (:pos pb))
+                bounce (direction dir (- particle-diameter dist))]
+            (reset! particles
+                    (assoc @particles
+                      a (assoc pa
+                          :pos (map + (:pos pa) bounce)
+                          :vel (map + (:vel pa) (direction dir (magnitude (:vel pa)))))
+                      b (assoc pb
+                          :pos (map - (:pos pb) bounce)
+                          :vel (map - (:vel pb) (direction dir (magnitude (:vel pb)))))))))))))
 
 (defn motion-tick!
   []

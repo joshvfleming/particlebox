@@ -1,8 +1,10 @@
 (ns physim.core
   (:require [THREE :as THREE]))
 
+(def particle-radius 20)
+(def particle-diameter (* 2 particle-radius))
 (def particle-count 10)
-(def gravity-multiplier 100)
+(def gravity-multiplier 200)
 (def speed-limit 5)
 (def initial-speed 0)
 
@@ -45,7 +47,8 @@
 
 (defn mesh-from-particle
   [p]
-  (let [geometry (THREE.SphereGeometry. 20 20 20)
+  (let [geometry (THREE.SphereGeometry.
+                  particle-radius particle-radius particle-radius)
         material (THREE.MeshNormalMaterial.)
         mesh (THREE.Mesh. geometry material)]
     (set-position! mesh (:pos p))
@@ -84,7 +87,8 @@
                   dir (map #(/ % mag) dir)]
               (map + a
                    (if (> mag 0)
-                     (map #(* % (/ gravity-multiplier (* mag mag))) dir)
+                     (map #(* % (/ gravity-multiplier
+                                   (* mag mag))) dir)
                      [0 0 0]))))
           [0 0 0]
           all))
@@ -102,7 +106,7 @@
 
 (defn collided?
   [a b]
-  (< (magnitude (map - a b)) 20))
+  (< (magnitude (map - a b)) particle-diameter))
 
 (defn handle-collisions!
   []
@@ -114,7 +118,7 @@
             abdir (map - (:pos pa) (:pos pb))
             dist (magnitude abdir)
             abdir (map #(/ % dist) abdir)
-            bounce (map #(* % (- 20 dist)) abdir)]
+            bounce (map #(* % (- particle-diameter dist)) abdir)]
         (when (and (not= a b) (collided? (:pos pa) (:pos pb)))
           (do
             (reset! particles (assoc @particles a (assoc pa :pos (map + (:pos pa) bounce) :vel (map + (:vel pa) (map #(* % (magnitude (:vel pa))) abdir)))))

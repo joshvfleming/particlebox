@@ -29,11 +29,12 @@
 
 (defn generate-particles
   [n]
-  (for [i (range n)]
-    { :pos [(rand-x) (rand-y) (rand-y)]
+  (vec
+   (for [i (range n)]
+     {:pos [(rand-x) (rand-y) (rand-y)]
       :vel [(/ (* initial-speed (rand-x)) scene-width)
             (/ (* initial-speed (rand-y)) scene-width)
-            (/ (* initial-speed (rand-y)) scene-width)] }))
+            (/ (* initial-speed (rand-y)) scene-width)] })))
 
 (defn set-position!
   [mesh [x y z]]
@@ -160,8 +161,8 @@ by all the other particles."
   (doseq [i (range particle-count)]
     (let [p (nth @particles i)
           [p v a] (move (:pos p) (:vel p) @particles)]
-      (reset! particles
-              (assoc (vec @particles) i {:pos p :vel v})))))
+      (swap! particles
+             assoc i {:pos p :vel v}))))
 
 (init-particles! (generate-particles particle-count))
 (def render-scene (make-renderer! @particle-meshes))  

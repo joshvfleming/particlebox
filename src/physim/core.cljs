@@ -134,27 +134,30 @@ by all the other particles."
 
 (defn handle-collisions!
   []
-  (let [n (count @particles)]
-    (doseq [a (range n)
-            b (range n)]
-      (let [pa (nth @particles a)
-            pb (nth @particles b)]
-        (when (and (not= a b) (collided? pa pb))
-          (let [dir (direction-from (:pos pb) (:pos pa))
-                dist (distance (:pos pa) (:pos pb))
-                bounce (direction dir (- particle-diameter dist))]
-            (reset! particles
-                    (assoc @particles
-                      a (assoc pa
-                          :pos (map + (:pos pa) bounce)
-                          :vel (map + (:vel pa) (direction dir (magnitude (:vel pa)))))
-                      b (assoc pb
-                          :pos (map - (:pos pb) bounce)
-                          :vel (map - (:vel pb) (direction dir (magnitude (:vel pb)))))))))))))
+  (doseq [a (range particle-count)
+          b (range particle-count)]
+    (let [pa (nth @particles a)
+          pb (nth @particles b)]
+      (when (and (not= a b) (collided? pa pb))
+        (let [dir (direction-from (:pos pb) (:pos pa))
+              dist (distance (:pos pa) (:pos pb))
+              bounce (direction dir (- particle-diameter dist))]
+          (reset! particles
+                  (assoc @particles
+                    a (assoc pa
+                        :pos (map + (:pos pa) bounce)
+                        :vel (map +
+                                  (:vel pa)
+                                  (direction dir (magnitude (:vel pa)))))
+                    b (assoc pb
+                        :pos (map - (:pos pb) bounce)
+                        :vel (map -
+                                  (:vel pb)
+                                  (direction dir (magnitude (:vel pb))))))))))))
 
 (defn motion-tick!
   []
-  (doseq [i (range (count @particles))]
+  (doseq [i (range particle-count)]
     (let [p (nth @particles i)
           [p v a] (move (:pos p) (:vel p) @particles)]
       (reset! particles
@@ -167,7 +170,7 @@ by all the other particles."
   (motion-tick!)
   (handle-collisions!)
 
-  (doseq [i (range (count @particles))]
+  (doseq [i (range particle-count)]
     (let [p (nth @particles i)
           m (nth @particle-meshes i)]
       ;; static rotation for blinginess

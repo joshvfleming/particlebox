@@ -142,18 +142,18 @@ by all the other particles."
         (let [dir (direction-from (:pos pb) (:pos pa))
               dist (distance (:pos pa) (:pos pb))
               bounce (direction dir (- particle-diameter dist))]
-          (reset! particles
-                  (assoc @particles
-                    a (assoc pa
-                        :pos (map + (:pos pa) bounce)
-                        :vel (map +
-                                  (:vel pa)
-                                  (direction dir (magnitude (:vel pa)))))
-                    b (assoc pb
-                        :pos (map - (:pos pb) bounce)
-                        :vel (map -
-                                  (:vel pb)
-                                  (direction dir (magnitude (:vel pb))))))))))))
+          (swap! particles
+                 assoc
+                 a (assoc pa
+                     :pos (map + (:pos pa) bounce)
+                     :vel (map +
+                               (:vel pa)
+                               (direction dir (magnitude (:vel pa)))))
+                 b (assoc pb
+                     :pos (map - (:pos pb) bounce)
+                     :vel (map -
+                               (:vel pb)
+                               (direction dir (magnitude (:vel pb)))))))))))
 
 (defn motion-tick!
   []

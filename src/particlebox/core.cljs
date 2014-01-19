@@ -26,15 +26,6 @@
   (- (rand-int scene-height)
      (/ scene-height 2)))
 
-(defn generate-particles
-  [n]
-  (vec
-   (for [i (range n)]
-     {:pos [(rand-x) (rand-y) (rand-y)]
-      :vel [(/ (* initial-speed (rand-x)) scene-width)
-            (/ (* initial-speed (rand-y)) scene-width)
-            (/ (* initial-speed (rand-y)) scene-width)] })))
-
 (defn set-position!
   [mesh [x y z]]
   (set! (.-x (.-position mesh)) x)
@@ -162,6 +153,13 @@ by all the other particles."
           [p v a] (move (:pos p) (:vel p) @particles)]
       (swap! particles
              assoc i {:pos p :vel v}))))
+
+(defn generate-particles
+  [n]
+  (vec
+   (for [i (range n)]
+     {:pos [(rand-x) (rand-y) (rand-y)]
+      :vel (direction [(rand-x) (rand-y) (rand-y)] initial-speed)})))
 
 (init-particles! (generate-particles particle-count))
 (def render-scene (make-renderer! @particle-meshes))  

@@ -1,5 +1,4 @@
-(ns physim.core
-  (:require [THREE :as THREE]))
+(ns particlebox.core)
 
 (def particle-radius 20)
 (def particle-diameter (* 2 particle-radius))

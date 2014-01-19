@@ -12,4 +12,6 @@
                         :compiler {
                                    :externs ["externs/three.js"]
                                    :output-to "resources/main.js"
+                                   :pretty-print false
+                                   :optimizations :simple
                                    }}] })

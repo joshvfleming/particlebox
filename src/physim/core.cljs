@@ -4,7 +4,7 @@
 (def particle-radius 20)
 (def particle-diameter (* 2 particle-radius))
 (def particle-count 10)
-(def gravity-multiplier 200)
+(def gravitational-constant 200)
 (def speed-limit 5)
 (def initial-speed 0)
 
@@ -111,7 +111,7 @@ by all the other particles."
            dist (distance p (:pos n))]
        (map + a
             (if (> dist 0)
-              (direction dir (/ gravity-multiplier
+              (direction dir (/ gravitational-constant
                                 (* dist dist)))
               nullv))))
    nullv

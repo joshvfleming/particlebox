@@ -89,7 +89,9 @@ scaled."
   ([v] (direction v 1))
   ([v m]
      (let [mag (magnitude v)]
-       (map #(* (/ % mag) m) v))))
+       (if (zero? mag)
+         nullv
+         (map #(* (/ % mag) m) v)))))
 
 (defn direction-from
   "Given two vectors, returns a unit vector representing the direction from the

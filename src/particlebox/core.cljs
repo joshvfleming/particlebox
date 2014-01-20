@@ -187,10 +187,8 @@ randomly."
      {:pos [(rand-x) (rand-y) (rand-y)]
       :vel (direction [(rand-x) (rand-y) (rand-y)] initial-speed)})))
 
-(init-particles! (generate-particles particle-count))
-(def render-scene (make-renderer! @particle-meshes))  
 (defn render
-  []
+  [drawfn]
   (motion-tick!)
   (handle-collisions!)
 
@@ -199,11 +197,17 @@ randomly."
           m (nth @particle-meshes i)]
       ;; static rotation for blinginess
       (rotate-angles! m [0 2 0])
+
       (set-position! m (:pos p))))
 
-  (render-scene))
+  (drawfn))
  
+(defn animate
+  [drawfn]
+  (.requestAnimationFrame js/window (partial animate drawfn))
+  (render drawfn))
+
 (defn ^:export start
   []
-  (.requestAnimationFrame js/window start)
-  (render))
+  (init-particles! (generate-particles particle-count))
+  (animate (make-renderer! @particle-meshes)))

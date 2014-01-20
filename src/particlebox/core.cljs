@@ -139,46 +139,65 @@ by all the other particles."
         p (map + p v)]
     [p v a]))
 
+(defn particle
+  "Creates a particle from the set of position, velocity, and acceleration
+vectors."
+  [[p v a]]
+  {:pos p :vel v :acc a})
+
+(defn update-universe
+  "Performs all motion in the universe for one stroboscopic 'tick' of the
+clock."
+  [particles]
+  (vec
+   (map #(particle (move (:pos %) (:vel %) particles))
+        particles)))
+
 (defn collided?
   "Determines whether the two particles have collided."
   [a b]
   (< (distance (:pos a) (:pos b)) particle-diameter))
 
-(defn handle-collisions!
-  "Scans all particles for collisions, and when any two particles collide,
+(defn detect-collisions
+  "Detects collisions in the universe, and returns them as pairs of index and
+particle."
+  [particles]
+  (for [a (range particle-count)
+        b (range particle-count)
+        :let [pa (nth particles a)
+              pb (nth particles b)]
+        :when (and (not= a b) (collided? pa pb))]
+    [a pa b pb]))
+
+(defn handle-collisions
+  "Scans the particles for collisions, and when any two particles collide,
 bounces them away from one another and cancels out velocity along the shared
 axis. This is not quite right, but suffices for now."
-  []
-  (doseq [a (range particle-count)
-          b (range particle-count)]
-    (let [pa (nth @particles a)
-          pb (nth @particles b)]
-      (when (and (not= a b) (collided? pa pb))
-        (let [dir (direction-from (:pos pa) (:pos pb))
-              dist (distance (:pos pa) (:pos pb))
-              bounce (direction dir (- particle-diameter dist))]
-          (swap! particles
-                 assoc
-                 a (assoc pa
-                     :pos (map - (:pos pa) bounce)
-                     :vel (map -
-                               (:vel pa)
-                               (direction dir (magnitude (:vel pa)))))
-                 b (assoc pb
-                     :pos (map + (:pos pb) bounce)
-                     :vel (map +
-                               (:vel pb)
-                               (direction dir (magnitude (:vel pb)))))))))))
+  [particles]
+   (let [collisions (detect-collisions particles)]
+     (if (empty? collisions)
+       particles
 
-(defn motion-tick!
-  "Performs all motion in the universe for one stroboscopic 'tick' of the
-clock."
-  []
-  (doseq [i (range particle-count)]
-    (let [p (nth @particles i)
-          [p v a] (move (:pos p) (:vel p) @particles)]
-      (swap! particles
-             assoc i {:pos p :vel v}))))
+       ;; if there are collisions, calculate the appropriate adjustments to
+       ;; position and velocity, and assoc the updated particles back into the
+       ;; particles vector.
+       (apply
+        (partial assoc particles)
+        (flatten
+         (for [[a pa b pb] collisions
+               :let [dir (direction-from (:pos pa) (:pos pb))
+                     dist (distance (:pos pa) (:pos pb))
+                     bounce (direction dir (- particle-diameter dist))]]
+           [a (assoc pa
+                :pos (map - (:pos pa) bounce)
+                :vel (map -
+                          (:vel pa)
+                          (direction dir (magnitude (:vel pa)))))
+            b (assoc pb
+                :pos (map + (:pos pb) bounce)
+                :vel (map +
+                          (:vel pb)
+                          (direction dir (magnitude (:vel pb)))))]))))))
 
 (defn generate-particles
   "Creates the given number of particles, and arranges them in the universe
@@ -189,20 +208,30 @@ randomly."
      {:pos [(rand-x) (rand-y) (rand-y)]
       :vel (direction [(rand-x) (rand-y) (rand-y)] initial-speed)})))
 
-(defn render
-  [drawfn]
-  (motion-tick!)
-  (handle-collisions!)
-
+(defn update-graphics-meshes!
+  "Update the graphics meshes to be in sync with the current state of the
+universe."
+  [particles]
   (doseq [i (range particle-count)]
-    (let [p (nth @particles i)
+    (let [p (nth particles i)
           m (nth @particle-meshes i)]
+
       ;; static rotation for blinginess
       (rotate-angles! m [0 2 0])
 
-      (set-position! m (:pos p))))
+      (set-position! m (:pos p)))))
 
-  (drawfn))
+(defn render
+  [drawfn]
+  (let [updated-particles
+        (-> @particles
+            update-universe
+            handle-collisions)]
+
+    (reset! particles updated-particles)
+
+    (update-graphics-meshes! updated-particles)
+    (drawfn)))
  
 (defn animate
   [drawfn]

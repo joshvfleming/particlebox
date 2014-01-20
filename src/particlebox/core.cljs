@@ -1,3 +1,4 @@
+;; Particle box, a physics playground.
 (ns particlebox.core)
 
 (def particle-radius 20)
@@ -27,18 +28,23 @@
      (/ scene-height 2)))
 
 (defn set-position!
+  "Convenience function for changing the position of an object. This just wraps
+some of the three.js javascriptiness."
   [mesh [x y z]]
   (set! (.-x (.-position mesh)) x)
   (set! (.-y (.-position mesh)) y)
   (set! (.-z (.-position mesh)) z))
 
 (defn rotate-angles!
+  "Convenience function for rotating an object. This just wraps some of the
+three.js javascriptiness."
   [mesh [x y z]]
   (set! (.-x (.-rotation mesh)) (+ (.-x (.-rotation mesh)) x))
   (set! (.-y (.-rotation mesh)) (+ (.-y (.-rotation mesh)) y))
   (set! (.-z (.-rotation mesh)) (+ (.-z (.-rotation mesh)) z)))
 
 (defn mesh-from-particle
+  "Builds a three.js mesh from the particle."
   [p]
   (let [geometry (THREE.SphereGeometry.
                   particle-radius particle-radius particle-radius)
@@ -48,11 +54,15 @@
     mesh))
 
 (defn init-particles!
+  "Sets up all the necessary simulation state for the particles."
   [ps]
   (reset! particles ps)
   (reset! particle-meshes (map mesh-from-particle ps)))
 
 (defn make-renderer!
+  "Creates a renderer function from the meshe objects. The resulting function
+has no parameters, and completes an entire redraw of the scene when it is
+called."
   [meshes]
   (let [camera (THREE.PerspectiveCamera.
                 50 (/ scene-width
@@ -69,6 +79,7 @@
       (.render renderer scene camera))))
 
 (defn magnitude
+  "Calculates the magnitude (length) of a vector."
   [v]
   (Math/sqrt (apply + (map #(* % %) v))))
 
@@ -88,11 +99,12 @@ first to the second, optionally scaled."
      (direction (map - b a) m)))
 
 (defn distance
+  "Calculates the distance betwen two points."
   [a b]
   (magnitude (map - a b)))
 
 (defn calc-accel
-  "Calculates the sum vector of the gravitational force exerted on the partical
+  "Calculates the sum vector of the gravitational force exerted on the particle
 by all the other particles."
   [p all-particles]
   (reduce
@@ -112,18 +124,28 @@ by all the other particles."
   [p v all]
   (let [a (calc-accel p all)
         v (map + v a)
+
+        ;; added a speed limit here because gavitational sigularities were
+        ;; causing particles to become superaccelerated, which is kind of cool
+        ;; but generally doesn't make for a good simulation. This is needed only
+        ;; when there's no collision detection.
         speed (magnitude v)
         v (if (> speed speed-limit)
             (direction v speed-limit)
             v)
+
         p (map + p v)]
     [p v a]))
 
 (defn collided?
+  "Determines whether the two particles have collided."
   [a b]
   (< (distance (:pos a) (:pos b)) particle-diameter))
 
 (defn handle-collisions!
+  "Scans all particles for collisions, and when any two particles collide,
+bounces them away from one another and cancels out velocity along the shared
+axis. This is not quite right, but suffices for now."
   []
   (doseq [a (range particle-count)
           b (range particle-count)]
@@ -147,6 +169,8 @@ by all the other particles."
                                (direction dir (magnitude (:vel pb)))))))))))
 
 (defn motion-tick!
+  "Performs all motion in the universe for one stroboscopic 'tick' of the
+clock."
   []
   (doseq [i (range particle-count)]
     (let [p (nth @particles i)
@@ -155,6 +179,8 @@ by all the other particles."
              assoc i {:pos p :vel v}))))
 
 (defn generate-particles
+  "Creates the given number of particles, and arranges them in the universe
+randomly."
   [n]
   (vec
    (for [i (range n)]

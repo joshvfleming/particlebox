@@ -203,9 +203,7 @@ randomly."
 
   (render-scene))
  
-(defn animate
+(defn ^:export start
   []
-  (.requestAnimationFrame js/window animate)
+  (.requestAnimationFrame js/window start)
   (render))
-
-(animate)

@@ -1,3 +1,3 @@
-# Introduction to physim
+# Introduction to particlebox
 
 TODO: write [great documentation](http://jacobian.org/writing/great-documentation/what-to-write/)

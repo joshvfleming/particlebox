@@ -6,7 +6,7 @@
 (def particle-count 10)
 (def gravitational-constant 200)
 (def initial-speed 0)
-(def bounciness 0.4)
+(def bounciness 0.6)
 
 (def scene-width window/innerWidth)
 (def scene-height window/innerHeight)
@@ -191,15 +191,17 @@ axis. This is not quite right, but suffices for now."
         (for [[a pa b pb] collisions
               :let [dir (direction-from (:pos pa) (:pos pb))
                     dist (distance (:pos pa) (:pos pb))
-                    bounce (direction dir (/ (- particle-diameter dist) 2))]]
+                    bounce (direction dir (/ (- particle-diameter dist) 2))
+                    acomp (project (:vel pa) dir)
+                    bcomp (project (:vel pb) (direction dir -1))]]
           [a :pos #(map - % bounce)
-           a :vel #(map -
+           a :vel #(map +
                         %
-                        (scale (project % dir) bounciness))
+                        (scale (map - bcomp acomp) bounciness))
            b :pos #(map + % bounce)
-           b :vel #(map -
+           b :vel #(map +
                         %
-                        (scale (project % (direction dir -1)) bounciness))])))))
+                        (scale (map - acomp bcomp) bounciness))])))))
 
 (defn generate-particles
   "Creates the given number of particles, and arranges them in the universe

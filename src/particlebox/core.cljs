@@ -5,15 +5,14 @@
 (def particle-diameter (* 2 particle-radius))
 (def particle-count 10)
 (def gravitational-constant 200)
-(def speed-limit 5)
 (def initial-speed 0)
+(def bounciness 0.4)
 
 (def scene-width window/innerWidth)
 (def scene-height window/innerHeight)
 
 (def particles (atom []))
 (def particle-meshes (atom []))
-(def collided-particles (atom {}))
 
 (def nullv [0 0 0])
 
@@ -83,6 +82,10 @@ called."
   [v]
   (Math/sqrt (apply + (map #(* % %) v))))
 
+(defn scale
+  [v s]
+  (map #(* % s) v))
+
 (defn direction
   "Given a vector, returns a unit vector in the same direction, optionally
 scaled."
@@ -92,6 +95,12 @@ scaled."
        (if (zero? mag)
          nullv
          (map #(* (/ % mag) m) v)))))
+
+(defn project
+  "Calculates the vector projection of a in the direction of b."
+  [a b]
+  (let [scalar (apply + (map * a (direction b)))]
+    (direction b scalar)))
 
 (defn direction-from
   "Given two vectors, returns a unit vector representing the direction from the
@@ -126,16 +135,6 @@ by all the other particles."
   [p v all]
   (let [a (calc-accel p all)
         v (map + v a)
-
-        ;; added a speed limit here because gavitational sigularities were
-        ;; causing particles to become superaccelerated, which is kind of cool
-        ;; but generally doesn't make for a good simulation. This is needed only
-        ;; when there's no collision detection.
-        speed (magnitude v)
-        v (if (> speed speed-limit)
-            (direction v speed-limit)
-            v)
-
         p (map + p v)]
     [p v a]))
 
@@ -179,25 +178,28 @@ axis. This is not quite right, but suffices for now."
        particles
 
        ;; if there are collisions, calculate the appropriate adjustments to
-       ;; position and velocity, and assoc the updated particles back into the
-       ;; particles vector.
-       (apply
-        (partial assoc particles)
-        (flatten
-         (for [[a pa b pb] collisions
-               :let [dir (direction-from (:pos pa) (:pos pb))
-                     dist (distance (:pos pa) (:pos pb))
-                     bounce (direction dir (- particle-diameter dist))]]
-           [a (assoc pa
-                :pos (map - (:pos pa) bounce)
-                :vel (map -
-                          (:vel pa)
-                          (direction dir (magnitude (:vel pa)))))
-            b (assoc pb
-                :pos (map + (:pos pb) bounce)
-                :vel (map +
-                          (:vel pb)
-                          (direction dir (magnitude (:vel pb)))))]))))))
+       ;; position and velocity.
+       (reduce
+        (fn [ps [a-idx a-key a-fn
+                 b-idx b-key b-fn]]
+          (-> ps
+              (update-in [a-idx a-key] a-fn)
+              (update-in [b-idx b-key] b-fn)))
+
+        particles
+
+        (for [[a pa b pb] collisions
+              :let [dir (direction-from (:pos pa) (:pos pb))
+                    dist (distance (:pos pa) (:pos pb))
+                    bounce (direction dir (/ (- particle-diameter dist) 2))]]
+          [a :pos #(map - % bounce)
+           a :vel #(map -
+                        %
+                        (scale (project % dir) bounciness))
+           b :pos #(map + % bounce)
+           b :vel #(map -
+                        %
+                        (scale (project % (direction dir -1)) bounciness))])))))
 
 (defn generate-particles
   "Creates the given number of particles, and arranges them in the universe

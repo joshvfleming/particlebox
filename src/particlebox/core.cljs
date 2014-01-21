@@ -59,9 +59,8 @@ three.js javascriptiness."
   (reset! particle-meshes (map mesh-from-particle ps)))
 
 (defn make-renderer!
-  "Creates a renderer function from the meshe objects. The resulting function
-has no parameters, and completes an entire redraw of the scene when it is
-called."
+  "Creates a renderer function from the mesh objects. The resulting function has
+no parameters, and completes an entire redraw of the scene when it is called."
   [meshes]
   (let [camera (THREE.PerspectiveCamera.
                 50 (/ scene-width

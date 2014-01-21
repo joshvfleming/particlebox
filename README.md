@@ -2,13 +2,15 @@
 
 A physics playground in ClojureScript
 
+Live demo: [joshvfleming.github.io/particlebox](http://joshvfleming.github.io/particlebox)
+
 ## Usage
 
-Building particlebox requires [Leiningen](http://leiningen.org/).
+Building particlebox requires [Leiningen](http://leiningen.org).
 
 ```
 lein cljsbuild once
-open open resources/index.html
+open resources/index.html
 ```
 
 ## License

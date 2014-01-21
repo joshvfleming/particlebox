@@ -169,8 +169,8 @@ particle."
 
 (defn handle-collisions
   "Scans the particles for collisions, and when any two particles collide,
-bounces them away from one another and cancels out velocity along the shared
-axis. This is not quite right, but suffices for now."
+bounces them away from one another with conserved momentum along the axis of
+collision."
   [particles]
    (let [collisions (detect-collisions particles)]
      (if (empty? collisions)
